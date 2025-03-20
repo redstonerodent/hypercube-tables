@@ -1,0 +1,5 @@
+*.tex
+*.pdf
+*.tsv
+!test.tsv
+old_hypercube.py
