@@ -3,10 +3,11 @@ from sys import argv
 prod = lambda xs: reduce(int.__mul__, xs, 1)
 
 file = argv[1]
+flags = ''.join(argv[2:])
 # to make the output a standalone tex file, instead of something to include in another file
-v_standalone = 's' in argv[2]
+v_standalone = 's' in flags
 # to make the header rows/columns have headers, e.g. put "n" at the top and then write "1"/"2"/etc. below instead of "n=1"/"n=2"/etc.
-v_headers = 'h' in argv[2]
+v_headers = 'h' in flags
 
 # format:
 """
