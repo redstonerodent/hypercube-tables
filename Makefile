@@ -1,18 +1,15 @@
-.PHONY: all test plumber tetrotile tcells asp-cgs
+v ?=
+.PHONY: all-pdf all-tex clean default
+default: clean all-tex
+all-tex: $(patsubst %.tsv, %.tex, $(wildcard *.tsv))
+all-pdf: $(patsubst %.tsv, %.pdf, $(wildcard *.tsv))
+clean:
+	-rm *.pdf
+	-rm *.tex
 
-all: test plumber tetrotile tcells asp-cgs
+%.tex: %.tsv
+	python hypercube.py $< $(v) > $@
 
-test:
-	./go.sh test
+%.pdf: %.tex
+	tectonic $<
 
-plumber:
-	./go.sh plumber
-
-tetrotile:
-	./go.sh tetrotile
-
-tcells:
-	./go.sh tcells
-
-asp-cgs:
-	./go.sh asp-cgs

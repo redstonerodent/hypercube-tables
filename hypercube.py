@@ -3,6 +3,8 @@ from sys import argv
 prod = lambda xs: reduce(int.__mul__, xs, 1)
 
 file = argv[1]
+# to make the output a standalone tex file, instead of something to include in another file
+standalone = 's' in argv[2:]
 
 # format:
 """
@@ -53,7 +55,7 @@ def parse(file):
     # entries = [{dimension: value}]
     # entryvals = [(entry name, cell color)]
 
-dimvals, dims, hdims, vdims, entries, entryvals = parse(file+'.tsv')
+dimvals, dims, hdims, vdims, entries, entryvals = parse(file)
 
 # count of values for these dimensions
 combos = lambda ds: prod(dims[d] for d in ds)
@@ -79,7 +81,8 @@ entrygrid = [[findentry(row, col) for col in range(combos(hdims))] for row in ra
 # meaning [hstart, hend) x [vstart, vend) (0 indexed) should have entry (as a Block)
 # and all cells should be colored
 # assumes the rectangles partition combos(vdims) x combos(hdims)
-def writerecs(rectangles, outfile):
+# outputs tex code to stdout
+def writerecs(rectangles):
     width = combos(hdims)
     height = combos(vdims)
     hoff = len(vdims)+1
@@ -113,40 +116,36 @@ def writerecs(rectangles, outfile):
     for (hs, he, vs, ve), v in rectangles:
         tablerects.append(((vs+voff, ve-vs, hs+hoff, he-hs), v))
 
-    with open(outfile, 'w') as f:
-        f.write(f'''
-\\documentclass{{standalone}}
-\\usepackage[table]{{xcolor}}
-\\usepackage{{nicematrix}}
+    if standalone:
+        print('''
+\\documentclass{standalone}
+\\usepackage[table]{xcolor}
+\\usepackage{nicematrix}
 
-\\begin{{document}}
+\\begin{document}''')
 
-\\begin{{NiceTabular}}{{{'c'*(width+hoff-1)}}}[hvlines]
-''')
-        # coloring rectangles
-        f.write(f'  \\CodeBefore')
+    print(f"\\begin{{NiceTabular}}{{{'c'*(width+hoff-1)}}}[hvlines]")
+    # coloring rectangles
+    print('  \\CodeBefore')
 
-        for (vs, vl, hs, hl), (_, color) in tablerects:
-            f.write(f'    \\rectanglecolor{{{color}}}{{{vs}-{hs}}}{{{vs+vl-1}-{hs+hl-1}}}\n')
+    for (vs, vl, hs, hl), (_, color) in tablerects:
+        print(f'    \\rectanglecolor{{{color}}}{{{vs}-{hs}}}{{{vs+vl-1}-{hs+hl-1}}}')
 
-        # the table content
-        f.write('  \\Body\n')
+    # the table content
+    print('  \\Body')
 
-        # this is 1 bigger than needed since latex 1 indexes
-        # i'll ignore the first row and column
-        blocks = [['' for _ in range(width+hoff)] for _ in range(height+voff)]
-        for (vs, vl, hs, hl), (val, _) in tablerects:
-            blocks[vs][hs] = f' \\Block{{{vl}-{hl}}}{{{val}}}'
+    # this is 1 bigger than needed since latex 1 indexes
+    # i'll ignore the first row and column
+    blocks = [['' for _ in range(width+hoff)] for _ in range(height+voff)]
+    for (vs, vl, hs, hl), (val, _) in tablerects:
+        blocks[vs][hs] = f' \\Block{{{vl}-{hl}}}{{{val}}}'
 
-        for row in range(1,height+voff):
-            f.write('    ')
-            f.write(' & '.join(blocks[row][1:]))
-            f.write('\\\\\n')
+    for row in range(1,height+voff):
+        print('    ' + ' & '.join(blocks[row][1:]) + '\\\\')
 
-        f.write('''
-\\end{NiceTabular}
-\\end{document}
-''')
+    print('\\end{NiceTabular}')
+    if standalone:
+        print('\\end{document}')
 
 ## approach 1 to prepping rectangles: greedily partition cells
 
@@ -216,19 +215,10 @@ def interval(subspace, ldims):
     return first, first+length
 
 
-# output files
+# merge cells that have the same content, including different entries with the same value and color
+# this is the best version I've tried
 
-# version that merges cells from the same entry
-if 0:
-    writerecs([(rec, entryvals[e]) for e in range(len(entries)) for rec in rectangulate(matches(entrygrid, e))], file+'-merge.tex')
-
-# version that merges cells that have the same content, including different entries with the same value and color
-if 1:
-    entryvalgrid = [[entryvals[cell] for cell in row] for row in entrygrid]
-    writerecs([(rec, e) for e in set(entryvals) for rec in rectangulate(matches(entryvalgrid, e))], file+'-mergemore.tex')
-
-# version that splits in a guillotine and then doesn't merge back; seems to be usually worse
-if 0:
-    writerecs([(interval(s,hdims)+interval(s,vdims), entryvals[i]) for c,i in multidice({}, entries) for p in separate(c, hdims) for s in separate(p, vdims)], file+'-guillotine.tex')
+entryvalgrid = [[entryvals[cell] for cell in row] for row in entrygrid]
+writerecs([(rec, e) for e in set(entryvals) for rec in rectangulate(matches(entryvalgrid, e))])
 
 
