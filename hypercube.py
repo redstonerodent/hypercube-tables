@@ -4,7 +4,9 @@ prod = lambda xs: reduce(int.__mul__, xs, 1)
 
 file = argv[1]
 # to make the output a standalone tex file, instead of something to include in another file
-standalone = 's' in argv[2:]
+v_standalone = 's' in argv[2]
+# to make the header rows/columns have headers, e.g. put "n" at the top and then write "1"/"2"/etc. below instead of "n=1"/"n=2"/etc.
+v_headers = 'h' in argv[2]
 
 # format:
 """
@@ -85,8 +87,8 @@ entrygrid = [[findentry(row, col) for col in range(combos(hdims))] for row in ra
 def writerecs(rectangles):
     width = combos(hdims)
     height = combos(vdims)
-    hoff = len(vdims)+1
-    voff = len(hdims)+1
+    hoff = len(vdims)+1 + v_headers # to make the header headers we need a bit more space
+    voff = len(hdims)+1 + v_headers
 
     # a list of rectangles to draw in the table, in a more convenient format
     # includes headers and handles offset
@@ -97,26 +99,35 @@ def writerecs(rectangles):
 
     # top headers
     for i,d in enumerate(hdims):
+        wth = combos(hdims[i+1:])
+        hgt = 1 + (v_headers and i == len(hdims)-1)
         for copy in range(combos(hdims[:i])):
             for j,v in enumerate(dimvals[d]):
-                wth = combos(hdims[i+1:])
                 col = hoff + copy * combos(hdims[i:]) + j * wth
-                tablerects.append(((i+1, 1, col, wth), v))
+                tablerects.append(((i+1, hgt, col, wth), v))
 
     # right headers
     for i,d in enumerate(vdims):
+        hgt = combos(vdims[i+1:])
+        wth = 1 + (v_headers and i == len(vdims)-1)
         for copy in range(combos(vdims[:i])):
             for j,v in enumerate(dimvals[d]):
-                hgt = combos(vdims[i+1:])
                 row = voff + copy * combos(vdims[i:]) + j * hgt
-                tablerects.append(((row, hgt, i+1, 1), v))
-                # todo
+                tablerects.append(((row, hgt, i+1, wth), v))
+
+    # header headers
+    if v_headers:
+        for (i,d) in enumerate(hdims):
+            tablerects.append(((i+1, 1, len(vdims)+1, 1), (d,'')))
+        for (i,d) in enumerate(vdims):
+            tablerects.append(((len(hdims)+1, 1, i+1, 1), (d,'')))
+
 
     # body
     for (hs, he, vs, ve), v in rectangles:
         tablerects.append(((vs+voff, ve-vs, hs+hoff, he-hs), v))
 
-    if standalone:
+    if v_standalone:
         print('''
 \\documentclass{standalone}
 \\usepackage[table]{xcolor}
@@ -144,7 +155,7 @@ def writerecs(rectangles):
         print('    ' + ' & '.join(blocks[row][1:]) + '\\\\')
 
     print('\\end{NiceTabular}')
-    if standalone:
+    if v_standalone:
         print('\\end{document}')
 
 ## approach 1 to prepping rectangles: greedily partition cells

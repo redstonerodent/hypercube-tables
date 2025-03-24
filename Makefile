@@ -1,11 +1,12 @@
 v ?=
+d ?= .
 .PHONY: all-pdf all-tex clean default
 default: clean all-tex
-all-tex: $(patsubst %.tsv, %.tex, $(wildcard *.tsv))
-all-pdf: $(patsubst %.tsv, %.pdf, $(wildcard *.tsv))
+all-tex: $(patsubst $(d)/%.tsv, $(d)/%.tex, $(wildcard $(d)/*.tsv))
+all-pdf: $(patsubst $(d)/%.tsv, $(d)/%.pdf, $(wildcard $(d)/*.tsv))
 clean:
-	-rm *.pdf
-	-rm *.tex
+	rm -f $(d)/*.pdf
+	rm -f $(d)/*.tex
 
 %.tex: %.tsv
 	python hypercube.py $< $(v) > $@
